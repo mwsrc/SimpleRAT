@@ -1,0 +1,96 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Net;
+using System.Net.Sockets;
+
+/* This is my wrapper for the client to connect. You can do it raw, but I just prefer wrappers since they're easier to work with.*/
+
+class ClientSettings
+{
+    Socket s;
+    //---Events---\\
+    public delegate void ReceivedEventHandler(ClientSettings cs, string received);
+    public event ReceivedEventHandler Received;
+    public delegate void DisconnectedEventHandler(ClientSettings cs);
+    public event DisconnectedEventHandler Disconnected;
+    //---End Events---\\
+    bool connected = false;
+
+    public ClientSettings()
+    {
+        s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+    }
+
+    public bool Connected
+    {
+        get { return connected; } /* Returns the boolean value if the client is connected or not. */
+    }
+
+    public void Connect(string IP, int port)
+    {
+        /* Simple connection method */
+        try
+        {
+            IPEndPoint ep = new IPEndPoint(IPAddress.Parse(IP), port);
+            s.BeginConnect(ep, new AsyncCallback(ConnectCallback), s);
+        }
+        catch { }
+    }
+
+    public void Close()
+    {
+        s.Close();
+    }
+
+    void ConnectCallback(IAsyncResult ar)
+    {
+        s.EndConnect(ar);
+        connected = true;
+        byte[] buffer = new byte[8192];
+        s.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(ReadCallback), buffer);
+    }
+
+    void ReadCallback(IAsyncResult ar)
+    {
+        /* As explained in the Listener, this is where we will begin reading data. */
+        byte[] buffer = (byte[])ar.AsyncState;
+        try
+        {
+            int rec = s.EndReceive(ar);
+            if (rec != 0)
+            {
+                string data = Encoding.ASCII.GetString(buffer, 0, rec);
+                Received(this, data);
+            }
+            else
+            {
+                Disconnected(this);
+                connected = false;
+                return;
+            }
+
+            s.BeginReceive(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(ReadCallback), buffer);
+        }
+        catch
+        {
+            Disconnected(this);
+        }
+    }
+
+    public void Send(string data)
+    {
+        /* You don't even need to ask. */
+        try
+        {
+            byte[] buffer = Encoding.ASCII.GetBytes(data);
+            s.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), buffer);
+        }
+        catch { Disconnected(this); }
+    }
+
+    void SendCallback(IAsyncResult ar)
+    {
+        s.EndSend(ar);
+    }
+}
