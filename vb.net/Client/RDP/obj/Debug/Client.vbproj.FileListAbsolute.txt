@@ -1,0 +1,3 @@
+D:\VB.Net\VB.Net\Simple Rat\Client\RDP\obj\Debug\Client.exe
+D:\VB.Net\VB.Net\Simple Rat\Client\RDP\obj\Debug\Client.xml
+D:\VB.Net\VB.Net\Simple Rat\Client\RDP\obj\Debug\Client.pdb
